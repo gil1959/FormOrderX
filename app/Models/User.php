@@ -33,6 +33,22 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    public function forms()
+    {
+        return $this->hasMany(Form::class);
+    }
+
+    public function submissions()
+    {
+        return $this->hasMany(Submission::class);
+    }
+
+    public function abandonedSessions()
+    {
+        return $this->hasMany(AbandonedSession::class);
+    }
+
+
     /**
      * Get the attributes that should be cast.
      *
