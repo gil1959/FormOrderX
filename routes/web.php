@@ -28,5 +28,4 @@ require __DIR__ . '/auth.php';
 // route admin (dashboard + form builder, dll)
 require __DIR__ . '/admin.php';
 
-Route::get('/embed/{token}.js', [FormEmbedController::class, 'script'])
-    ->name('embed.script');
+Route::get('/embed/{token}.js', [FormEmbedController::class, 'script']);

@@ -1,5 +1,3 @@
-{{-- resources/views/admin/forms/preview.blade.php --}}
-
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -19,34 +17,35 @@
     </x-slot>
 
     @php
-        $settings   = $form->settings ?? [];
+        $settings = $form->settings ?? [];
 
-        // layout
+        // --- layout ---
         $layout     = $settings['layout'] ?? [];
+        $template   = $layout['template'] ?? 'right_sidebar';
         $background = $layout['background'] ?? 'white';
 
-        $bgClass = match ($background) {
+        $bgClass = match($background) {
             'soft_green' => 'bg-emerald-50',
             'soft_beige' => 'bg-amber-50',
             'soft_gray'  => 'bg-slate-50',
             default      => 'bg-white',
         };
 
-        // product & guarantee
+        // --- product ---
         $product        = $settings['product'] ?? [];
         $showImage      = $product['show_image'] ?? false;
         $imageUrl       = $product['image_url'] ?? null;
         $showGuarantee  = $product['show_guarantee'] ?? false;
         $guaranteeLabel = $product['guarantee_label'] ?? null;
 
-        // variation
-        $variation   = $settings['variation'] ?? [];
-        $varEnabled  = $variation['enabled'] ?? false;
-        $varType     = $variation['type'] ?? 'radio';
-        $varLabel    = $variation['label'] ?? 'Pilih Varian';
-        $varOptions  = $variation['options'] ?? [];
+        // --- variation ---
+        $variation  = $settings['variation'] ?? [];
+        $varEnabled = $variation['enabled'] ?? false;
+        $varType    = $variation['type'] ?? 'radio';
+        $varLabel   = $variation['label'] ?? 'Pilih Varian';
+        $varOptions = $variation['options'] ?? [];
 
-        // button
+        // --- button ---
         $button   = $settings['button'] ?? [];
         $btnLabel = $button['label'] ?? 'KIRIM';
         $btnColor = $button['color'] ?? 'blue';
@@ -67,123 +66,95 @@
         };
     @endphp
 
+    {{-- =============================================
+        LAYOUT WRAPPER LEVEL 1
+        ============================================= --}}
     <div class="py-10 {{ $bgClass }}">
-        <div class="max-w-3xl mx-auto px-4">
-            <div class="bg-white shadow-sm rounded-xl border border-gray-100 p-8">
+        <div class="max-w-6xl mx-auto px-4">
 
-                {{-- gambar produk --}}
-                @if ($showImage && $imageUrl)
-                    <div class="mb-4 flex justify-center">
-                       <img src="{{ asset($imageUrl) }}" alt="Gambar produk"
-     class="max-h-40 rounded-lg shadow-sm object-contain">
+            {{-- =========================
+                 TEMPLATE: RIGHT SIDEBAR
+               ========================= --}}
+            @if ($template === 'right_sidebar')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+
+                    {{-- kiri = gambar --}}
+                    <div class="flex flex-col items-center">
+                        @if ($showImage && $imageUrl)
+                            <img src="{{ $imageUrl }}"
+                                 class="max-h-56 rounded-lg shadow-sm object-contain mb-3">
+                        @endif
+
+                        @if ($showGuarantee && $guaranteeLabel)
+                            <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs">
+                                {{ $guaranteeLabel }}
+                            </span>
+                        @endif
                     </div>
-                @endif
 
-                {{-- label garansi --}}
-                @if ($showGuarantee && $guaranteeLabel)
-                    <div class="mb-2 text-center">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium uppercase tracking-wide">
-                            {{ $guaranteeLabel }}
-                        </span>
+                    {{-- kanan = form --}}
+                    <div>
+                        @include('admin.forms._preview_form_inner')
                     </div>
-                @endif
 
-                {{-- judul form --}}
-                <h3 class="text-lg font-semibold text-gray-900 text-center mb-6">
-                    {{ $form->name }}
-                </h3>
+                </div>
 
-                <form onsubmit="return false;" class="space-y-4">
-                    {{-- fields --}}
-                    @foreach ($fields as $field)
-                        @php
-                            $isRequired = $field->is_required ?? false;
-                        @endphp
+            {{-- =========================
+                 TEMPLATE: LEFT SIDEBAR
+               ========================= --}}
+            @elseif ($template === 'left_sidebar')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
 
-                        <div class="space-y-1">
-                            <label class="block text-sm font-medium text-gray-700">
-                                {{ $field->label }}
-                                @if ($isRequired)
-                                    <span class="text-red-500">*</span>
-                                @endif
-                            </label>
+                    {{-- kiri = form --}}
+                    <div>
+                        @include('admin.forms._preview_form_inner')
+                    </div>
 
-                            @if ($field->type === 'textarea')
-                                <textarea
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                    rows="3"
-                                    placeholder="{{ $field->placeholder ?? '' }}"
-                                    disabled></textarea>
-                            @elseif($field->type === 'select')
-                                <select
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                    disabled>
-                                    <option value="">-- pilih --</option>
-                                    @foreach (($field->options ?? []) as $opt)
-                                        <option value="{{ $opt }}">{{ $opt }}</option>
-                                    @endforeach
-                                </select>
-                            @else
-                                <input
-                                    type="text"
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                    placeholder="{{ $field->placeholder ?? '' }}"
-                                    disabled>
-                            @endif
-                        </div>
-                    @endforeach
+                    {{-- kanan = gambar --}}
+                    <div class="flex flex-col items-center">
+                        @if ($showImage && $imageUrl)
+                            <img src="{{ $imageUrl }}"
+                                 class="max-h-56 rounded-lg shadow-sm object-contain mb-3">
+                        @endif
 
-                    {{-- variation preview jika aktif --}}
-                    @if ($varEnabled && count($varOptions))
-                        <div class="space-y-1 pt-2 border-t border-dashed border-gray-200 mt-4">
-                            <label class="block text-sm font-medium text-gray-700">
-                                {{ $varLabel }}
-                            </label>
+                        @if ($showGuarantee && $guaranteeLabel)
+                            <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs">
+                                {{ $guaranteeLabel }}
+                            </span>
+                        @endif
+                    </div>
 
-                            @if ($varType === 'dropdown')
-                                <select
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                    disabled>
-                                    <option value="">-- pilih varian --</option>
-                                    @foreach ($varOptions as $opt)
-    @php
-        $optLabel = is_array($opt)
-            ? ($opt['label'] ?? ($opt['value'] ?? json_encode($opt)))
-            : $opt;
-    @endphp
-    <option value="{{ $optLabel }}">{{ $optLabel }}</option>
-@endforeach
-                                </select>
-                            @else
-                               <div class="flex flex-wrap gap-3">
-    @foreach ($varOptions as $opt)
-        @php
-            $optLabel = is_array($opt)
-                ? ($opt['label'] ?? ($opt['value'] ?? json_encode($opt)))
-                : $opt;
-        @endphp
+                </div>
 
-        <label class="inline-flex items-center gap-1 text-sm text-gray-700">
-            <input type="radio" disabled class="text-indigo-600 border-gray-300">
-            <span>{{ $optLabel }}</span>
-        </label>
-    @endforeach
-</div>
-                            @endif
-                        </div>
-                    @endif
+            {{-- =========================
+                 TEMPLATE: NO SIDEBAR
+               ========================= --}}
+            @else
+                <div class="max-w-xl mx-auto">
 
-                    {{-- tombol submit preview --}}
-                   <div class="mt-6 flex justify-center">
-    <button
-        type="button"
-        class="inline-flex items-center px-6 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-semibold shadow-lg shadow-emerald-500/30"
-    >
-        GAS (PREVIEW)
-    </button>
-</div>
-                </form>
-            </div>
+                    <div class="bg-white shadow-sm rounded-xl border border-gray-100 p-8">
+                        @if ($showImage && $imageUrl)
+                            <div class="flex justify-center mb-4">
+                                <img src="{{ $imageUrl }}"
+                                     class="max-h-56 rounded-lg shadow-sm object-contain">
+                            </div>
+                        @endif
+
+                        @if ($showGuarantee && $guaranteeLabel)
+                            <div class="text-center mb-3">
+                                <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs">
+                                    {{ $guaranteeLabel }}
+                                </span>
+                            </div>
+                        @endif
+
+                        @include('admin.forms._preview_form_inner')
+                    </div>
+
+                </div>
+            @endif
+
         </div>
     </div>
+
 </x-app-layout>
