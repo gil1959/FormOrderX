@@ -11,6 +11,7 @@ class Submission extends Model
         'form_id',
         'user_id',
         'status',
+        'payment_status',
         'total_price',
         'data',
         'source_url',
@@ -19,6 +20,8 @@ class Submission extends Model
         'is_spam',
         'submitted_at',
     ];
+
+
 
     protected $casts = [
         'data' => 'array',

@@ -44,7 +44,6 @@ class FormController extends Controller
         $data = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'base_price'  => ['nullable', 'numeric', 'min:0'],
             'is_active'   => ['nullable', 'boolean'],
         ]);
 
@@ -71,39 +70,32 @@ class FormController extends Controller
             'slug'        => $slug,
             'embed_token' => $embedToken,
             'description' => $data['description'] ?? null,
-            'base_price'  => $data['base_price'] ?? null,
             'is_active'   => $data['is_active'] ?? true,
 
-            // ⬇️ INI JSON SETTINGS DEFAULT BUAT TAMPILAN & TRACKING
-            'settings'    => [
+            'settings' => [
                 'layout' => [
-                    // posisi / layout checkout (kayak kanan sidebar, kiri, dll)
-                    'template'   => 'right_sidebar', // right_sidebar | left_sidebar | no_sidebar
-                    'background' => 'white',         // white | soft_green | soft_beige | soft_gray
+                    'template'   => 'right_sidebar',
+                    'background' => 'white',
                 ],
                 'button' => [
-                    // pengaturan tombol submit
-                    'label' => 'KIRIM',              // teks tombol
-                    'color' => 'blue',               // blue | green | orange | red
-                    'shape' => 'pill',               // square | rounded | pill
+                    'label' => 'KIRIM',
+                    'color' => 'blue',
+                    'shape' => 'pill',
                 ],
                 'product' => [
-                    // pengaturan tampilan gambar & label garansi
                     'show_image'      => true,
                     'image_url'       => null,
                     'show_guarantee'  => true,
                     'guarantee_label' => '100% Jaminan Kepuasan',
                 ],
                 'variation' => [
-                    // variasi produk (misal Paket A/B/C)
-                    'enabled' => false,              // aktif / tidak
-                    'type'    => 'radio',            // radio | dropdown
+                    'enabled' => false,
+                    'type'    => 'radio',
                     'label'   => 'Pilih Varian',
-                    'options' => [],                 // nanti diisi dari halaman Design
+                    'options' => [],
                 ],
                 'tracking' => [
-                    // tracking pixel
-                    'facebook_pixel_ids' => [],      // array of string
+                    'facebook_pixel_ids' => [],
                     'facebook_events'    => [],
                     'gtm_ids'            => [],
                     'tiktok_pixel_ids'   => [],
@@ -112,7 +104,7 @@ class FormController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.forms.index')
+            ->route('app.forms.index')
             ->with('success', 'Form "' . $form->name . '" berhasil dibuat. Embed code siap digunakan.');
     }
 
@@ -121,7 +113,6 @@ class FormController extends Controller
      */
     public function preview(Form $form)
     {
-        // pastikan ini memang form milik user yg login
         abort_unless($form->user_id === Auth::id(), 403);
 
         $form->load(['fields' => function ($q) {
@@ -136,7 +127,6 @@ class FormController extends Controller
 
     /**
      * Halaman "Design" untuk atur template, warna, variasi, tracking, dll.
-     * View: resources/views/admin/forms/design.blade.php
      */
     public function design(Form $form)
     {
@@ -191,7 +181,6 @@ class FormController extends Controller
     {
         abort_unless($form->user_id === Auth::id(), 403);
 
-        // ========= VALIDASI =========
         $validated = $request->validate([
             'layout.template'          => ['required', 'string'],
             'layout.background'        => ['required', 'string'],
@@ -200,78 +189,141 @@ class FormController extends Controller
             'product.image_url'        => ['nullable', 'string'],
             'product.show_guarantee'   => ['nullable', 'boolean'],
             'product.guarantee_label'  => ['nullable', 'string'],
-            'product_image'            => ['nullable', 'image', 'max:2048'], // 2MB
+            'product_image'            => ['nullable', 'image', 'max:2048'],
 
             'variation.enabled'        => ['nullable', 'boolean'],
             'variation.type'           => ['required', 'string'],
             'variation.label'          => ['nullable', 'string'],
-            'variation.options_text'   => ['nullable', 'string'],
+
+            // ✅ baru: opsi variasi bentuk array dari UI
+            'variation.options'            => ['nullable', 'array'],
+            'variation.options.*.label'    => ['nullable', 'string', 'max:255'],
+            'variation.options.*.price'    => ['nullable', 'string', 'max:50'],
+
+            // ✅ kompatibilitas lama (kalau masih ada textarea yang submit)
+            'variation.options_text'       => ['nullable', 'string'],
 
             'button.label'             => ['required', 'string'],
             'button.color'             => ['required', 'string'],
             'button.shape'             => ['required', 'string'],
 
-            // tracking (sementara cuma disimpan apa adanya)
             'tracking.facebook_pixel_ids_text' => ['nullable', 'string'],
             'tracking.facebook_events_text'    => ['nullable', 'string'],
             'tracking.gtm_ids_text'            => ['nullable', 'string'],
             'tracking.tiktok_pixel_ids_text'   => ['nullable', 'string'],
         ]);
 
-        // Biar aman, pecah dulu per-section
         $layoutData    = $validated['layout']    ?? [];
         $productData   = $validated['product']   ?? [];
         $variationData = $validated['variation'] ?? [];
         $buttonData    = $validated['button']    ?? [];
         $trackingData  = $validated['tracking']  ?? [];
 
-        // ========= HANDLE OPSI VARIASI =========
+        // ========= HANDLE OPSI VARIASI (UI baru) =========
         $options = [];
-        $rawOptionsText = $variationData['options_text'] ?? '';
+        $seen = []; // buat anti tabrakan value
 
-        if (trim($rawOptionsText) !== '') {
-            $lines = preg_split('/\r\n|\r|\n/', $rawOptionsText);
+        $inputOptions = $variationData['options'] ?? [];
 
-            foreach ($lines as $line) {
-                $label = trim($line);
-                if ($label === '') {
-                    continue;
+        if (is_array($inputOptions) && count($inputOptions) > 0) {
+            foreach ($inputOptions as $row) {
+                $label = trim((string)($row['label'] ?? ''));
+                if ($label === '') continue;
+
+                $rawPrice = trim((string)($row['price'] ?? ''));
+                $price = null;
+
+                if ($rawPrice !== '') {
+                    $digits = preg_replace('/[^0-9]/', '', $rawPrice);
+                    if ($digits !== '') $price = (int)$digits;
+                }
+
+                $baseValue = Str::slug($label);
+                $value = $baseValue;
+
+                // anti tabrakan: paket-hemat, paket-hemat-2, paket-hemat-3, dst.
+                if (isset($seen[$value])) {
+                    $seen[$baseValue] = ($seen[$baseValue] ?? 1) + 1;
+                    $value = $baseValue . '-' . $seen[$baseValue];
+                } else {
+                    $seen[$value] = 1;
+                    $seen[$baseValue] = $seen[$baseValue] ?? 1;
                 }
 
                 $options[] = [
                     'label' => $label,
-                    'value' => Str::slug($label),
+                    'value' => $value,
+                    'price' => $price,
                 ];
             }
         }
 
+        // ========= BACKWARD COMPAT: kalau UI baru kosong tapi options_text lama ada =========
+        if (count($options) === 0) {
+            $rawOptionsText = $variationData['options_text'] ?? '';
+            if (trim($rawOptionsText) !== '') {
+                $lines = preg_split('/\r\n|\r|\n/', $rawOptionsText);
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line === '') continue;
+
+                    $label = $line;
+                    $price = null;
+
+                    if (str_contains($line, '|') || str_contains($line, '=')) {
+                        $sep = str_contains($line, '|') ? '|' : '=';
+                        [$left, $right] = array_pad(explode($sep, $line, 2), 2, '');
+                        $label = trim($left);
+                        $rawPrice = trim($right);
+
+                        if ($rawPrice !== '') {
+                            $digits = preg_replace('/[^0-9]/', '', $rawPrice);
+                            if ($digits !== '') $price = (int)$digits;
+                        }
+                    }
+
+                    if ($label === '') continue;
+
+                    $baseValue = Str::slug($label);
+                    $value = $baseValue;
+
+                    if (isset($seen[$value])) {
+                        $seen[$baseValue] = ($seen[$baseValue] ?? 1) + 1;
+                        $value = $baseValue . '-' . $seen[$baseValue];
+                    } else {
+                        $seen[$value] = 1;
+                        $seen[$baseValue] = $seen[$baseValue] ?? 1;
+                    }
+
+                    $options[] = [
+                        'label' => $label,
+                        'value' => $value,
+                        'price' => $price,
+                    ];
+                }
+            }
+        }
+
         // ========= HANDLE UPLOAD GAMBAR =========
-        // default pakai yang lama kalau ada
         $currentSettings = $form->settings ?? [];
         $currentProduct  = $currentSettings['product'] ?? [];
-
         $imageUrl = $currentProduct['image_url'] ?? null;
 
         if ($request->hasFile('product_image')) {
             $file = $request->file('product_image');
-
-            // simpan ke storage/app/public/form-images
             $path = $file->store('form-images', 'public');
-
-            // convert ke URL penuh (https://domain/storage/...)
             $imageUrl = url(Storage::url($path));
         } else {
-            // kalau user isi manual URL pakai text
             if (!empty($productData['image_url'])) {
                 $imageUrl = $productData['image_url'];
             }
         }
 
-        // ========= HANDLE TRACKING (optional, biar rapi di DB) =========
-        $facebookIds   = array_filter(array_map('trim', explode(',', $trackingData['facebook_pixel_ids_text'] ?? '')));
-        $facebookEvts  = array_filter(array_map('trim', explode(',', $trackingData['facebook_events_text'] ?? '')));
-        $gtmIds        = array_filter(array_map('trim', explode(',', $trackingData['gtm_ids_text'] ?? '')));
-        $tiktokIds     = array_filter(array_map('trim', explode(',', $trackingData['tiktok_pixel_ids_text'] ?? '')));
+        // ========= HANDLE TRACKING =========
+        $facebookIds  = array_filter(array_map('trim', explode(',', $trackingData['facebook_pixel_ids_text'] ?? '')));
+        $facebookEvts = array_filter(array_map('trim', explode(',', $trackingData['facebook_events_text'] ?? '')));
+        $gtmIds       = array_filter(array_map('trim', explode(',', $trackingData['gtm_ids_text'] ?? '')));
+        $tiktokIds    = array_filter(array_map('trim', explode(',', $trackingData['tiktok_pixel_ids_text'] ?? '')));
 
         // ========= SUSUN SETTINGS FINAL =========
         $finalSettings = [
@@ -309,5 +361,43 @@ class FormController extends Controller
         ]);
 
         return back()->with('success', 'Pengaturan berhasil disimpan.');
+    }
+    public function destroy(Request $request, Form $form)
+    {
+        abort_unless($form->user_id === $request->user()->id, 403);
+
+        // Ambil image_url dari settings untuk hapus file storage kalau itu file lokal
+        $settings = $form->settings ?? [];
+        $imageUrl = $settings['product']['image_url'] ?? null;
+
+        // Hapus relasi dulu (biar aman walau gak ada FK cascade)
+        // Sesuaikan nama relasi jika berbeda:
+        if (method_exists($form, 'fields')) {
+            $form->fields()->delete();
+        }
+        if (method_exists($form, 'submissions')) {
+            $form->submissions()->delete();
+        }
+
+        // Hapus file gambar lokal (kalau disimpan di /storage/...)
+        // NOTE: imageUrl di project lu disimpan sebagai url(...) jadi kita parse yang mengandung /storage/
+        if ($imageUrl && is_string($imageUrl) && str_contains($imageUrl, '/storage/')) {
+            $path = parse_url($imageUrl, PHP_URL_PATH); // /storage/form-images/xxx.png
+            if ($path) {
+                $path = ltrim($path, '/');
+                // ubah storage/... -> public/...
+                // Storage::url() itu biasanya /storage/xxx => disk public path xxx
+                $relative = str_replace('storage/', '', $path); // form-images/xxx.png
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($relative);
+            }
+        }
+
+        $formName = $form->name;
+
+        $form->delete();
+
+        return redirect()
+            ->route('app.forms.index')
+            ->with('success', 'Form "' . $formName . '" berhasil dihapus.');
     }
 }

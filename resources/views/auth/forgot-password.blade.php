@@ -1,25 +1,44 @@
 <x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+  <div>
+    <div class="flex items-center gap-3">
+      <x-application-logo class="h-9 w-auto" />
+      <div class="leading-tight">
+        <p class="text-sm font-semibold tracking-tight text-slate-900">{{ config('app.name', 'Form Order System') }}</p>
+        <p class="text-xs text-slate-500">Reset kata sandi</p>
+      </div>
     </div>
 
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <h1 class="mt-6 text-2xl font-extrabold tracking-tight text-slate-900">Lupa kata sandi</h1>
+    <p class="mt-2 text-sm text-slate-600">
+      Masukkan email yang terdaftar. Link reset akan dikirim ke email tersebut.
+    </p>
 
-    <form method="POST" action="{{ route('password.email') }}">
-        @csrf
+    <x-auth-session-status class="mt-4" :status="session('status')" />
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
+    <form class="mt-6 space-y-4" method="POST" action="{{ route('password.email') }}">
+      @csrf
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Email Password Reset Link') }}
-            </x-primary-button>
-        </div>
+      <div>
+        <label for="email" class="label">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          class="input mt-2"
+          value="{{ old('email') }}"
+          required
+          autofocus
+          autocomplete="username"
+          placeholder="nama@domain.com"
+        />
+        <x-input-error :messages="$errors->get('email')" class="mt-2" />
+      </div>
+
+      <button type="submit" class="btn-primary w-full">Kirim link reset</button>
+
+      <div class="pt-2 text-sm text-slate-600">
+        <a class="font-semibold text-slate-900 hover:underline" href="{{ route('login') }}">Kembali ke login</a>
+      </div>
     </form>
+  </div>
 </x-guest-layout>

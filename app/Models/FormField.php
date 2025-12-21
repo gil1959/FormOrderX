@@ -16,13 +16,16 @@ class FormField extends Model
         'options',
         'order',
         'is_active',
+        'show_in_summary',
     ];
 
     protected $casts = [
         'required' => 'boolean',
         'options' => 'array',
         'is_active' => 'boolean',
+        'show_in_summary' => 'boolean',
     ];
+
 
     public function form(): BelongsTo
     {

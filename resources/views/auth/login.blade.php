@@ -1,47 +1,102 @@
 <x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+  <div class="grid lg:grid-cols-2 gap-6 items-stretch">
+    {{-- Left: Form --}}
+    <div>
+      <div class="flex items-center gap-3">
+        <x-application-logo class="h-9 w-auto" />
+        <div class="leading-tight">
+          <p class="text-sm font-semibold tracking-tight text-slate-900">{{ config('app.name', 'Form Order System') }}</p>
+          <p class="text-xs text-slate-500">Akses akun</p>
+        </div>
+      </div>
 
-    <form method="POST" action="{{ route('login') }}">
+      <h1 class="mt-6 text-2xl font-extrabold tracking-tight text-slate-900">Masuk</h1>
+      <p class="mt-2 text-sm text-slate-600">
+        Gunakan email dan kata sandi yang terdaftar.
+      </p>
+
+      <x-auth-session-status class="mt-4" :status="session('status')" />
+
+      <form class="mt-6 space-y-4" method="POST" action="{{ route('login') }}">
         @csrf
 
-        <!-- Email Address -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+          <label for="email" class="label">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            class="input mt-2"
+            value="{{ old('email') }}"
+            required
+            autofocus
+            autocomplete="username"
+            placeholder="nama@domain.com"
+          />
+          <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
+        <div>
+          <div class="flex items-center justify-between">
+            <label for="password" class="label">Kata sandi</label>
             @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
+              <a class="text-sm font-semibold text-slate-700 hover:text-slate-900" href="{{ route('password.request') }}">
+                Lupa kata sandi?
+              </a>
             @endif
+          </div>
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            class="input mt-2"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+          />
+          <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
-    </form>
+
+        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+          <input id="remember_me" type="checkbox" class="rounded border-slate-300" name="remember">
+          Ingat perangkat ini
+        </label>
+
+        <button type="submit" class="btn-primary w-full">Masuk</button>
+
+        <div class="pt-2 text-sm text-slate-600">
+          Belum punya akun?
+          <a class="font-semibold text-slate-900 hover:underline" href="{{ route('register') }}">Buat akun</a>
+        </div>
+      </form>
+    </div>
+
+    {{-- Right: Info --}}
+    <div class="hidden lg:block">
+      <div class="card p-8 h-full">
+        <p class="text-sm font-semibold text-slate-900">Ringkas</p>
+        <p class="mt-2 text-sm text-slate-600">
+          Akses cepat ke modul utama:
+        </p>
+
+        <div class="mt-6 grid gap-3">
+          <div class="card-solid p-4">
+            <p class="text-sm font-semibold text-slate-900">Forms</p>
+            <p class="mt-1 text-xs text-slate-600">Buat dan kelola form</p>
+          </div>
+          <div class="card-solid p-4">
+            <p class="text-sm font-semibold text-slate-900">Orders</p>
+            <p class="mt-1 text-xs text-slate-600">Pantau order masuk</p>
+          </div>
+          <div class="card-solid p-4">
+            <p class="text-sm font-semibold text-slate-900">Abandoned</p>
+            <p class="mt-1 text-xs text-slate-600">Lihat sesi yang belum selesai</p>
+          </div>
+        </div>
+
+        
+      </div>
+    </div>
+  </div>
 </x-guest-layout>

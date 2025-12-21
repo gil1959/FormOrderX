@@ -21,7 +21,7 @@
                         <li>Menu ke Form Builder, Order List, Tracking, dll.</li>
                     </ul>
                     <a
-    href="{{ route('admin.forms.index') }}"
+    href="{{ route('app.forms.index') }}"
     class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700"
 >
     Kelola Form

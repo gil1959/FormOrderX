@@ -16,9 +16,21 @@ class FormFieldController extends Controller
         $this->authorizeForm($form);
 
         $fields = $form->fields()->orderBy('order')->get();
+
+        // list asli (biar kompatibel sama view lama kalau ada yang masih pakai)
         $fieldTypes = ['text', 'textarea', 'number', 'tel', 'email', 'select'];
 
-        return view('admin.forms.fields', compact('form', 'fields', 'fieldTypes'));
+        // label manusia (buat UI awam)
+        $fieldTypeLabels = [
+            'text'     => 'Teks (1 baris)',
+            'textarea' => 'Teks Panjang (alamat/catatan)',
+            'number'   => 'Angka',
+            'tel'      => 'No. HP / WhatsApp',
+            'email'    => 'Email',
+            'select'   => 'Pilihan (Dropdown)',
+        ];
+
+        return view('admin.forms.fields', compact('form', 'fields', 'fieldTypes', 'fieldTypeLabels'));
     }
 
     // Tambah field baru
@@ -29,9 +41,10 @@ class FormFieldController extends Controller
         $data = $request->validate([
             'label'     => ['required', 'string', 'max:255'],
             'name'      => ['required', 'string', 'max:255'],
-            'type'      => ['required', 'string'],
+            'type'      => ['required', 'string', 'in:text,textarea,number,tel,email,select'],
             'required'  => ['nullable', 'boolean'],
             'options'   => ['nullable', 'string'], // comma separated, untuk select
+            'show_in_summary' => ['nullable', 'boolean'],
         ]);
 
         $order = ($form->fields()->max('order') ?? 0) + 1;
@@ -53,6 +66,8 @@ class FormFieldController extends Controller
             'options'   => $options,
             'order'     => $order,
             'is_active' => true,
+            // default: true (checkbox checked). Perlu migration tambah kolom show_in_summary.
+            'show_in_summary' => $request->boolean('show_in_summary', true),
         ]);
 
         return back()->with('success', 'Field berhasil ditambahkan.');

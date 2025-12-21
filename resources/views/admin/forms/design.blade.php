@@ -1,480 +1,561 @@
 {{-- resources/views/admin/forms/design.blade.php --}}
+@extends('layouts.app')
 
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Pengaturan Tampilan Form
-            </h2>
+@section('header')
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight text-slate-900">Pengaturan Tampilan Form</h1>
+      <p class="mt-1 text-sm text-slate-600">
+        Form: <span class="font-semibold">{{ $form->name }}</span>
+      </p>
+      @if ($form->description)
+        <p class="mt-1 text-xs text-slate-500">{{ $form->description }}</p>
+      @endif
+    </div>
 
-            <div class="flex items-center gap-3 text-xs">
-                <a href="{{ route('admin.forms.index') }}" class="text-gray-500 hover:text-gray-700">
-                    &larr; Kembali ke Form Saya
-                </a>
+    <div class="flex items-center gap-2">
+      <a href="{{ route('app.forms.index') }}" class="btn-outline">&larr; Kembali</a>
+      <a href="{{ route('app.forms.preview', $form) }}" class="btn-soft">Preview</a>
+    </div>
+  </div>
+@endsection
 
-                <a href="{{ route('admin.forms.preview', $form) }}"
-                   class="inline-flex items-center px-3 py-1.5 rounded-md border border-indigo-500 text-indigo-600 hover:bg-indigo-50">
-                    Preview
-                </a>
+@section('content')
+  <div class="max-w-6xl space-y-4">
+
+  
+
+    <form method="POST"
+          action="{{ route('app.forms.design.update', $form) }}"
+          enctype="multipart/form-data"
+          class="space-y-6">
+      @csrf
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {{-- ================== TEMPLATE & LAYOUT ================== --}}
+        <div class="card-solid p-6">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-semibold text-slate-900">Template & Layout</h2>
+              <p class="mt-1 text-xs text-slate-500">
+                Atur posisi form dan warna background supaya nyatu dengan landing page.
+              </p>
             </div>
+          </div>
+
+          @php
+            $layout     = $settings['layout'] ?? [];
+            $template   = old('layout.template', $layout['template'] ?? 'right_sidebar');
+            $background = old('layout.background', $layout['background'] ?? 'white');
+
+            $bgOptions = [
+              'white'      => ['label' => 'White',      'color' => '#ffffff'],
+              'soft_green' => ['label' => 'Soft Green', 'color' => '#ecfdf3'],
+              'soft_beige' => ['label' => 'Soft Beige', 'color' => '#fffbeb'],
+              'soft_gray'  => ['label' => 'Soft Gray',  'color' => '#f8fafc'],
+            ];
+          @endphp
+
+          <div class="mt-5 space-y-4">
+
+            <div>
+              <p class="text-xs font-semibold text-slate-700 mb-2">Posisi Layout</p>
+
+              <div class="space-y-2">
+                @foreach ([
+                  'right_sidebar' => ['Kanan Sidebar', 'Form di kanan, konten di kiri.'],
+                  'left_sidebar'  => ['Kiri Sidebar',  'Form di kiri, konten di kanan.'],
+                  'no_sidebar'    => ['Tanpa Sidebar', 'Form full lebar (cocok ditengah halaman).'],
+                ] as $key => [$ttl, $desc])
+                  <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="radio"
+                      name="layout[template]"
+                      value="{{ $key }}"
+                      class="mt-1 h-4 w-4 rounded-full border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                      {{ $template === $key ? 'checked' : '' }}
+                    >
+                    <div>
+                      <div class="text-sm font-semibold text-slate-900">{{ $ttl }}</div>
+                      <div class="mt-1 text-xs text-slate-500">{{ $desc }}</div>
+                    </div>
+                  </label>
+                @endforeach
+              </div>
+
+              @error('layout.template')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold text-slate-700 mb-2">Warna Background</p>
+
+              <div class="flex flex-wrap items-center gap-3">
+                @foreach ($bgOptions as $key => $cfg)
+                  <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="radio"
+                      name="layout[background]"
+                      value="{{ $key }}"
+                      class="h-4 w-4 border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                      {{ $background === $key ? 'checked' : '' }}
+                    >
+                    <span class="h-6 w-6 rounded-lg border border-slate-200 inline-block" style="background: {{ $cfg['color'] }}"></span>
+                    <span class="text-xs font-semibold text-slate-700">{{ $cfg['label'] }}</span>
+                  </label>
+                @endforeach
+              </div>
+
+              @error('layout.background')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+          </div>
         </div>
-    </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+        {{-- ================== GAMBAR & GARANSI ================== --}}
+        <div class="card-solid p-6">
+          <h2 class="text-sm font-semibold text-slate-900">Gambar Produk & Label Garansi</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Bisa pakai upload file (utama) atau URL (fallback).
+          </p>
 
-            @if (session('success'))
-                <div class="mb-4 p-3 rounded-md bg-green-50 text-green-800 text-sm">
-                    {{ session('success') }}
-                </div>
+          @php
+            $product        = $settings['product'] ?? [];
+            $showImage      = old('product.show_image', $product['show_image'] ?? false);
+            $imageUrl       = old('product.image_url', $product['image_url'] ?? '');
+            $showGuarantee  = old('product.show_guarantee', $product['show_guarantee'] ?? false);
+            $guaranteeLabel = old('product.guarantee_label', $product['guarantee_label'] ?? '100% Jaminan Kepuasan');
+          @endphp
+
+          <div class="mt-5 space-y-4">
+            <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <input
+                type="checkbox"
+                name="product[show_image]"
+                value="1"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                {{ $showImage ? 'checked' : '' }}
+              >
+              <div>
+                <div class="text-sm font-semibold text-slate-800">Tampilkan gambar produk</div>
+                <p class="mt-1 text-xs text-slate-500">Gambar muncul di atas form (atau di sisi sesuai template).</p>
+              </div>
+            </label>
+
+            @if ($imageUrl)
+              <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <p class="text-xs font-semibold text-slate-700">Preview gambar saat ini</p>
+                <img
+                  src="{{ $imageUrl }}"
+                  alt="Gambar produk"
+                  class="mt-3 max-h-44 w-full rounded-xl border border-slate-200 object-contain bg-white"
+                >
+              </div>
             @endif
 
-            <div class="mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    {{ $form->name }}
-                </h3>
-                @if ($form->description)
-                    <p class="text-sm text-gray-600">
-                        {{ $form->description }}
-                    </p>
-                @endif
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <label class="label">Upload gambar (utama)</label>
+              <p class="help mt-1">Maks 2MB. Jika tidak upload baru, sistem pakai yang lama atau URL.</p>
+
+              <input
+                type="file"
+                name="product_image"
+                accept="image/*"
+                class="mt-3 block w-full text-sm text-slate-700 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-900 hover:file:bg-slate-200"
+              >
+              @error('product_image')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+
+              <div class="mt-4">
+                <label class="label">Atau URL gambar (fallback)</label>
+                <input
+                  type="text"
+                  name="product[image_url]"
+                  value="{{ $imageUrl }}"
+                  class="input mt-2"
+                  placeholder="https://..."
+                >
+                @error('product.image_url')
+                  <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+                @enderror
+              </div>
             </div>
 
-           <form method="POST"
-      action="{{ route('admin.forms.design.update', $form) }}"
-      enctype="multipart/form-data"
-      class="space-y-6">
-                @csrf
+            <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <input
+                type="checkbox"
+                name="product[show_guarantee]"
+                value="1"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                {{ $showGuarantee ? 'checked' : '' }}
+              >
+              <div>
+                <div class="text-sm font-semibold text-slate-800">Tampilkan label garansi</div>
+                <p class="mt-1 text-xs text-slate-500">Badge kecil di atas judul form.</p>
+              </div>
+            </label>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {{-- ================== TEMPLATE & LAYOUT ================== --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                        <h4 class="font-semibold text-gray-900 mb-3">
-                            Template &amp; Layout
-                        </h4>
-
-                        <p class="text-xs text-gray-500 mb-4">
-                            Atur posisi form dan warna background agar menyatu dengan desain landing page.
-                        </p>
-
-                        @php
-                            $layout    = $settings['layout'] ?? [];
-                            $template  = old('layout.template', $layout['template'] ?? 'right_sidebar');
-                            $background = old('layout.background', $layout['background'] ?? 'white');
-                        @endphp
-
-                        {{-- PILIH TEMPLATE POSISI --}}
-                        <div class="mb-4">
-                            <p class="text-xs font-semibold text-gray-700 mb-1">
-                                Pilih Template Posisi
-                            </p>
-
-                            <div class="space-y-2 text-xs">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="layout[template]"
-                                        value="right_sidebar"
-                                        class="h-4 w-4 text-indigo-600 border-gray-300"
-                                        {{ $template === 'right_sidebar' ? 'checked' : '' }}
-                                    >
-                                    <div>
-                                        <div class="font-semibold text-gray-900">Kanan Sidebar</div>
-                                        <div class="text-[11px] text-gray-500">
-                                            Form di kanan, konten di kiri.
-                                        </div>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="layout[template]"
-                                        value="left_sidebar"
-                                        class="h-4 w-4 text-indigo-600 border-gray-300"
-                                        {{ $template === 'left_sidebar' ? 'checked' : '' }}
-                                    >
-                                    <div>
-                                        <div class="font-semibold text-gray-900">Kiri Sidebar</div>
-                                        <div class="text-[11px] text-gray-500">
-                                            Form di kiri, konten di kanan.
-                                        </div>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="layout[template]"
-                                        value="no_sidebar"
-                                        class="h-4 w-4 text-indigo-600 border-gray-300"
-                                        {{ $template === 'no_sidebar' ? 'checked' : '' }}
-                                    >
-                                    <div>
-                                        <div class="font-semibold text-gray-900">Tanpa Sidebar</div>
-                                        <div class="text-[11px] text-gray-500">
-                                            Form full lebar, cocok di tengah halaman.
-                                        </div>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        {{-- PILIH WARNA BACKGROUND --}}
-                        <div>
-                            <p class="text-xs font-semibold text-gray-700 mb-1">
-                                Pilih Warna Background Form
-                            </p>
-
-                            @php
-                                $bgOptions = [
-                                    'white'      => '#ffffff',
-                                    'soft_green' => '#ecfdf3',
-                                    'soft_beige' => '#fffbeb',
-                                    'soft_gray'  => '#f8fafc',
-                                ];
-                            @endphp
-
-                            <div class="flex flex-wrap items-center gap-4 text-[11px]">
-                                @foreach ($bgOptions as $key => $color)
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="layout[background]"
-                                            value="{{ $key }}"
-                                            class="h-4 w-4 text-indigo-600 border-gray-300"
-                                            {{ $background === $key ? 'checked' : '' }}
-                                        >
-                                        <span class="w-6 h-6 rounded-md border border-gray-300 inline-block"
-                                              style="background-color: {{ $color }}"></span>
-                                        <span class="text-gray-700">
-                                            {{ ucwords(str_replace('_', ' ', $key)) }}
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ================== GAMBAR & GARANSI ================== --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                        <h4 class="font-semibold text-gray-900 mb-3">
-                            Gambar Produk &amp; Label Garansi
-                        </h4>
-
-                        @php
-                            $product        = $settings['product'] ?? [];
-                            $showImage      = old('product.show_image', $product['show_image'] ?? false);
-                            $imageUrl       = old('product.image_url', $product['image_url'] ?? '');
-                            $showGuarantee  = old('product.show_guarantee', $product['show_guarantee'] ?? false);
-                            $guaranteeLabel = old('product.guarantee_label', $product['guarantee_label'] ?? '100% Jaminan Kepuasan');
-                        @endphp
-
-                        <div class="space-y-4 text-xs">
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="product[show_image]" value="1"
-                                       class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
-                                       {{ $showImage ? 'checked' : '' }}>
-                                <span class="text-gray-700">Tampilkan gambar produk di atas form?</span>
-                            </label>
-
-                           @if ($imageUrl)
-    <div class="mb-3">
-        <p class="text-[11px] text-gray-600 mb-1">Preview Gambar Saat Ini</p>
-        <img src="{{ asset($imageUrl) }}"
-             alt="Gambar produk"
-             class="max-h-32 rounded-md border border-gray-200 object-contain bg-white">
-    </div>
-@endif
-
-<div class="space-y-1">
-    <label class="block text-gray-700 mb-1">
-        Upload Gambar Produk
-    </label>
-    <input type="file"
-           name="product_image"
-           accept="image/*"
-           class="block w-full text-xs text-gray-700
-                  file:mr-3 file:py-1.5 file:px-3
-                  file:rounded-md file:border-0
-                  file:text-xs file:font-semibold
-                  file:bg-indigo-50 file:text-indigo-700
-                  hover:file:bg-indigo-100">
-
-    <p class="text-[10px] text-gray-500">
-        Pilih file gambar dari perangkat (maks. 2MB). Jika tidak memilih gambar baru,
-        sistem akan memakai gambar yang sudah ada.
-    </p>
-
-    {{-- opsional: kalau masih mau kasih opsi URL manual --}}
-    <div class="pt-2">
-        <label class="block text-gray-700 mb-1">
-            Atau pakai URL gambar (opsional)
-        </label>
-        <input type="text" name="product[image_url]" value="{{ $imageUrl }}"
-               class="w-full border-gray-300 rounded-md shadow-sm text-xs"
-               placeholder="https://...">
-        <p class="text-[10px] text-gray-500 mt-1">
-            Kalau isi ini, URL akan dipakai kalau tidak ada upload file baru.
-        </p>
-    </div>
-</div>
-
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="product[show_guarantee]" value="1"
-                                       class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
-                                       {{ $showGuarantee ? 'checked' : '' }}>
-                                <span class="text-gray-700">Tampilkan label garansi kecil di atas judul form?</span>
-                            </label>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Teks Label Garansi
-                                </label>
-                                <input type="text" name="product[guarantee_label]" value="{{ $guaranteeLabel }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ================== VARIASI PRODUK ================== --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                        <h4 class="font-semibold text-gray-900 mb-3">
-                            Variasi Produk
-                        </h4>
-
-                        @php
-                            $variation  = $settings['variation'] ?? [];
-                            $varEnabled = old('variation.enabled', $variation['enabled'] ?? false);
-                            $varType    = old('variation.type', $variation['type'] ?? 'radio');
-                            $varLabel   = old('variation.label', $variation['label'] ?? 'Pilih Varian');
-                           $optionsText = old(
-    'variation.options_text',
-    collect($variation['options'] ?? [])->pluck('label')->implode("\n")
-);
-                        @endphp
-
-                        <div class="space-y-4 text-xs">
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="variation[enabled]" value="1"
-                                       class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
-                                       {{ $varEnabled ? 'checked' : '' }}>
-                                <span class="text-gray-700">Aktifkan variasi produk?</span>
-                            </label>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Tipe Variasi
-                                </label>
-
-                                <div class="space-y-1 text-xs">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="variation[type]"
-                                            value="radio"
-                                            class="h-4 w-4 text-indigo-600 border-gray-300"
-                                            {{ $varType === 'radio' ? 'checked' : '' }}
-                                        >
-                                        <span class="text-gray-700">Radio (pilihan bulat)</span>
-                                    </label>
-
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="variation[type]"
-                                            value="dropdown"
-                                            class="h-4 w-4 text-indigo-600 border-gray-300"
-                                            {{ $varType === 'dropdown' ? 'checked' : '' }}
-                                        >
-                                        <span class="text-gray-700">Dropdown (select box)</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Label Variasi
-                                </label>
-                                <input type="text" name="variation[label]" value="{{ $varLabel }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs">
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Daftar Opsi (1 baris = 1 opsi)
-                                </label>
-                                <textarea name="variation[options_text]"
-                                          class="w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                          rows="4"
-                                          placeholder="Contoh:
-Paket Hemat
-Paket Normal
-Paket Premium">{{ $optionsText }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ================== TOMBOL SUBMIT ================== --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                        <h4 class="font-semibold text-gray-900 mb-3">
-                            Tombol Submit
-                        </h4>
-
-                        @php
-                            $button   = $settings['button'] ?? [];
-                            $btnLabel = old('button.label', $button['label'] ?? 'KIRIM');
-                            $btnColor = old('button.color', $button['color'] ?? 'blue');
-                            $btnShape = old('button.shape', $button['shape'] ?? 'pill');
-                            $btnColors = [
-                                'blue'   => '#2563eb',
-                                'green'  => '#16a34a',
-                                'orange' => '#f97316',
-                                'red'    => '#dc2626',
-                            ];
-                        @endphp
-
-                        <div class="space-y-4 text-xs">
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Teks Tombol
-                                </label>
-                                <input type="text" name="button[label]" value="{{ $btnLabel }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs">
-                            </div>
-
-                            <div>
-                                <p class="text-xs font-semibold text-gray-700 mb-1">
-                                    Warna Tombol
-                                </p>
-
-                                <div class="flex flex-wrap items-center gap-4 text-[11px]">
-                                    @foreach ($btnColors as $key => $color)
-                                        <label class="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="button[color]"
-                                                value="{{ $key }}"
-                                                class="h-4 w-4 text-indigo-600 border-gray-300"
-                                                {{ $btnColor === $key ? 'checked' : '' }}
-                                            >
-                                            <span class="w-7 h-7 rounded-md shadow"
-                                                  style="background-color: {{ $color }}"></span>
-                                            <span class="text-gray-700">
-                                                {{ ucfirst($key) }}
-                                            </span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <div>
-                                <p class="text-xs font-semibold text-gray-700 mb-1">
-                                    Bentuk Tombol
-                                </p>
-
-                                <div class="space-y-1 text-xs">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="button[shape]"
-                                            value="square"
-                                            class="h-4 w-4 text-indigo-600 border-gray-300"
-                                            {{ $btnShape === 'square' ? 'checked' : '' }}
-                                        >
-                                        <span class="text-gray-700">Kotak</span>
-                                    </label>
-
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="button[shape]"
-                                            value="rounded"
-                                            class="h-4 w-4 text-indigo-600 border-gray-300"
-                                            {{ $btnShape === 'rounded' ? 'checked' : '' }}
-                                        >
-                                        <span class="text-gray-700">Rounded</span>
-                                    </label>
-
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="button[shape]"
-                                            value="pill"
-                                            class="h-4 w-4 text-indigo-600 border-gray-300"
-                                            {{ $btnShape === 'pill' ? 'checked' : '' }}
-                                        >
-                                        <span class="text-gray-700">Pill (oval)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ================== TRACKING PIXEL ================== --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-5 md:col-span-2">
-                        <h4 class="font-semibold text-gray-900 mb-3">
-                            Tracking (Facebook Pixel, GTM, TikTok)
-                        </h4>
-
-                        @php
-                            $tracking = $settings['tracking'] ?? [];
-                            $fbIdsText   = old('tracking.facebook_pixel_ids_text', implode(', ', $tracking['facebook_pixel_ids'] ?? []));
-                            $fbEventsTxt = old('tracking.facebook_events_text', implode(', ', $tracking['facebook_events'] ?? []));
-                            $gtmIdsText  = old('tracking.gtm_ids_text', implode(', ', $tracking['gtm_ids'] ?? []));
-                            $ttIdsText   = old('tracking.tiktok_pixel_ids_text', implode(', ', $tracking['tiktok_pixel_ids'] ?? []));
-                        @endphp
-
-                        <div class="grid md:grid-cols-2 gap-4 text-xs">
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Facebook Pixel IDs
-                                </label>
-                                <input type="text" name="tracking[facebook_pixel_ids_text]" value="{{ $fbIdsText }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                       placeholder="ID1, ID2, ...">
-                                <p class="text-[10px] text-gray-500 mt-1">
-                                    Pisahkan dengan koma jika lebih dari satu.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Facebook Pixel Events
-                                </label>
-                                <input type="text" name="tracking[facebook_events_text]" value="{{ $fbEventsTxt }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                       placeholder="Lead, Purchase, CompleteRegistration">
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    Google Tag Manager IDs
-                                </label>
-                                <input type="text" name="tracking[gtm_ids_text]" value="{{ $gtmIdsText }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                       placeholder="GTM-XXXXXX, GTM-YYYYYY">
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 mb-1">
-                                    TikTok Pixel IDs
-                                </label>
-                                <input type="text" name="tracking[tiktok_pixel_ids_text]" value="{{ $ttIdsText }}"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                       placeholder="ID1, ID2, ...">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-end">
-                    <x-primary-button>
-                        Simpan Pengaturan
-                    </x-primary-button>
-                </div>
-            </form>
+            <div>
+              <label class="label">Teks label garansi</label>
+              <input
+                type="text"
+                name="product[guarantee_label]"
+                value="{{ $guaranteeLabel }}"
+                class="input mt-2"
+              >
+              @error('product.guarantee_label')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+          </div>
         </div>
-    </div>
-</x-app-layout>
+
+        {{-- ================== VARIASI PRODUK ================== --}}
+        <div class="card-solid p-6">
+          <h2 class="text-sm font-semibold text-slate-900">Variasi Produk</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Contoh: Paket Hemat / Normal / Premium.
+          </p>
+
+          @php
+            $variation  = $settings['variation'] ?? [];
+            $varEnabled = old('variation.enabled', $variation['enabled'] ?? false);
+            $varType    = old('variation.type', $variation['type'] ?? 'radio');
+            $varLabel   = old('variation.label', $variation['label'] ?? 'Pilih Varian');
+
+            $varOptions = old('variation.options', $variation['options'] ?? []);
+            $varOptions = collect($varOptions)->map(function($o){
+              return [
+                'label' => is_array($o) ? ($o['label'] ?? '') : '',
+                'price' => is_array($o) ? ($o['price'] ?? null) : null,
+              ];
+            })->values()->all();
+          @endphp
+
+          <div class="mt-5 space-y-4">
+            <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <input
+                type="checkbox"
+                name="variation[enabled]"
+                value="1"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                {{ $varEnabled ? 'checked' : '' }}
+              >
+              <div>
+                <div class="text-sm font-semibold text-slate-800">Aktifkan variasi</div>
+                <p class="mt-1 text-xs text-slate-500">Kalau aktif, user wajib pilih varian sebelum submit.</p>
+              </div>
+            </label>
+
+            <div>
+              <p class="text-xs font-semibold text-slate-700 mb-2">Tipe variasi</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                @foreach (['radio' => 'Radio', 'dropdown' => 'Dropdown'] as $k => $ttl)
+                  <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="radio"
+                      name="variation[type]"
+                      value="{{ $k }}"
+                      class="h-4 w-4 border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                      {{ $varType === $k ? 'checked' : '' }}
+                    >
+                    <span class="text-sm font-semibold text-slate-800">{{ $ttl }}</span>
+                  </label>
+                @endforeach
+              </div>
+              @error('variation.type')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <div>
+              <label class="label">Label variasi</label>
+              <input type="text" name="variation[label]" value="{{ $varLabel }}" class="input mt-2">
+              @error('variation.label')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+            {{-- ✅ UI Variasi: tombol tambah + row nama/harga --}}
+            <div class="mt-2">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <label class="label">Daftar Variasi</label>
+                  <p class="help mt-1">Klik “Tambah Variasi” untuk menambah opsi. Harga boleh kosong.</p>
+                </div>
+                <button type="button" id="btnAddVariation" class="btn-soft px-3 py-2 text-xs">+ Tambah Variasi</button>
+              </div>
+
+              <div id="variationRows" class="mt-3 space-y-2">
+                @if (count($varOptions))
+                  @foreach ($varOptions as $i => $opt)
+                    <div class="variation-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center rounded-2xl border border-slate-200 bg-white p-3">
+                      <div class="sm:col-span-7">
+                        <label class="text-xs font-semibold text-slate-600">Nama Variasi</label>
+                        <input type="text"
+                               name="variation[options][{{ $i }}][label]"
+                               value="{{ $opt['label'] }}"
+                               class="input mt-2 var-label"
+                               placeholder="Contoh: Paket Hemat">
+                      </div>
+
+                      <div class="sm:col-span-4">
+                        <label class="text-xs font-semibold text-slate-600">Harga (opsional)</label>
+                        <input type="text"
+                               inputmode="numeric"
+                               name="variation[options][{{ $i }}][price]"
+                               value="{{ $opt['price'] }}"
+                               class="input mt-2 var-price"
+                               placeholder="Contoh: 25000">
+                        <p class="mt-1 text-[11px] text-slate-500">Boleh kosong. Boleh pakai “25.000” / “Rp 25.000”.</p>
+                      </div>
+
+                      <div class="sm:col-span-1 flex sm:justify-end">
+                        <button type="button"
+                                class="btn-outline px-3 py-2 text-xs border-rose-200 text-rose-700 hover:bg-rose-50 btnRemoveVariation">
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  @endforeach
+                @else
+                  <div class="variation-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center rounded-2xl border border-slate-200 bg-white p-3">
+                    <div class="sm:col-span-7">
+                      <label class="text-xs font-semibold text-slate-600">Nama Variasi</label>
+                      <input type="text"
+                             name="variation[options][0][label]"
+                             class="input mt-2 var-label"
+                             placeholder="Contoh: Paket Hemat">
+                    </div>
+
+                    <div class="sm:col-span-4">
+                      <label class="text-xs font-semibold text-slate-600">Harga (opsional)</label>
+                      <input type="text"
+                             inputmode="numeric"
+                             name="variation[options][0][price]"
+                             class="input mt-2 var-price"
+                             placeholder="Contoh: 25000">
+                      <p class="mt-1 text-[11px] text-slate-500">Boleh kosong. Boleh pakai “25.000” / “Rp 25.000”.</p>
+                    </div>
+
+                    <div class="sm:col-span-1 flex sm:justify-end">
+                      <button type="button"
+                              class="btn-outline px-3 py-2 text-xs border-rose-200 text-rose-700 hover:bg-rose-50 btnRemoveVariation">
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                @endif
+              </div>
+
+              @error('variation.options')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <template id="variationRowTpl">
+              <div class="variation-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="sm:col-span-7">
+                  <label class="text-xs font-semibold text-slate-600">Nama Variasi</label>
+                  <input type="text" class="input mt-2 var-label" placeholder="Contoh: Paket Hemat">
+                </div>
+
+                <div class="sm:col-span-4">
+                  <label class="text-xs font-semibold text-slate-600">Harga (opsional)</label>
+                  <input type="text" inputmode="numeric" class="input mt-2 var-price" placeholder="Contoh: 25000">
+                  <p class="mt-1 text-[11px] text-slate-500">Boleh kosong. Boleh pakai “25.000” / “Rp 25.000”.</p>
+                </div>
+
+                <div class="sm:col-span-1 flex sm:justify-end">
+                  <button type="button"
+                          class="btn-outline px-3 py-2 text-xs border-rose-200 text-rose-700 hover:bg-rose-50 btnRemoveVariation">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <script>
+              (function(){
+                const wrap = document.getElementById('variationRows');
+                const btnAdd = document.getElementById('btnAddVariation');
+                const tpl = document.getElementById('variationRowTpl');
+
+                if (!wrap || !btnAdd || !tpl) return;
+
+                function reindex(){
+                  const rows = wrap.querySelectorAll('.variation-row');
+                  rows.forEach((row, idx) => {
+                    const labelInput = row.querySelector('.var-label');
+                    const priceInput = row.querySelector('.var-price');
+                    if (labelInput) labelInput.name = `variation[options][${idx}][label]`;
+                    if (priceInput) priceInput.name = `variation[options][${idx}][price]`;
+                  });
+                }
+
+                function addRow(){
+                  const node = tpl.content.cloneNode(true);
+                  wrap.appendChild(node);
+                  reindex();
+                }
+
+                function removeRow(btn){
+                  const row = btn.closest('.variation-row');
+                  if (!row) return;
+
+                  const rows = wrap.querySelectorAll('.variation-row');
+                  if (rows.length <= 1) {
+                    const labelInput = row.querySelector('.var-label');
+                    const priceInput = row.querySelector('.var-price');
+                    if (labelInput) labelInput.value = '';
+                    if (priceInput) priceInput.value = '';
+                    return;
+                  }
+
+                  row.remove();
+                  reindex();
+                }
+
+                wrap.addEventListener('click', function(e){
+                  const btn = e.target.closest('.btnRemoveVariation');
+                  if (btn) removeRow(btn);
+                });
+
+                btnAdd.addEventListener('click', addRow);
+
+                reindex();
+              })();
+            </script>
+
+          </div>
+        </div>
+
+        {{-- ================== TOMBOL SUBMIT ================== --}}
+        <div class="card-solid p-6">
+          <h2 class="text-sm font-semibold text-slate-900">Tombol Submit</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Atur label, warna, dan bentuk tombol.
+          </p>
+
+          @php
+            $button   = $settings['button'] ?? [];
+            $btnLabel = old('button.label', $button['label'] ?? 'KIRIM');
+            $btnColor = old('button.color', $button['color'] ?? 'blue');
+            $btnShape = old('button.shape', $button['shape'] ?? 'pill');
+
+            $btnColors = [
+              'blue'   => ['label' => 'Blue',   'color' => '#2563eb'],
+              'green'  => ['label' => 'Green',  'color' => '#16a34a'],
+              'orange' => ['label' => 'Orange', 'color' => '#f97316'],
+              'red'    => ['label' => 'Red',    'color' => '#dc2626'],
+            ];
+          @endphp
+
+          <div class="mt-5 space-y-4">
+            <div>
+              <label class="label">Teks tombol</label>
+              <input type="text" name="button[label]" value="{{ $btnLabel }}" class="input mt-2">
+              @error('button.label')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold text-slate-700 mb-2">Warna tombol</p>
+              <div class="flex flex-wrap items-center gap-3">
+                @foreach ($btnColors as $key => $cfg)
+                  <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="radio"
+                      name="button[color]"
+                      value="{{ $key }}"
+                      class="h-4 w-4 border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                      {{ $btnColor === $key ? 'checked' : '' }}
+                    >
+                    <span class="h-6 w-6 rounded-lg border border-slate-200 inline-block" style="background: {{ $cfg['color'] }}"></span>
+                    <span class="text-xs font-semibold text-slate-700">{{ $cfg['label'] }}</span>
+                  </label>
+                @endforeach
+              </div>
+              @error('button.color')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold text-slate-700 mb-2">Bentuk tombol</p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                @foreach (['square' => 'Kotak', 'rounded' => 'Rounded', 'pill' => 'Pill'] as $k => $ttl)
+                  <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="radio"
+                      name="button[shape]"
+                      value="{{ $k }}"
+                      class="h-4 w-4 border-slate-300 text-slate-900 focus:ring-slate-900/20"
+                      {{ $btnShape === $k ? 'checked' : '' }}
+                    >
+                    <span class="text-sm font-semibold text-slate-800">{{ $ttl }}</span>
+                  </label>
+                @endforeach
+              </div>
+              @error('button.shape')
+                <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              @enderror
+            </div>
+          </div>
+        </div>
+
+        {{-- ================== TRACKING PIXEL ================== --}}
+        <div class="card-solid p-6 md:col-span-2">
+          <h2 class="text-sm font-semibold text-slate-900">Tracking (Facebook Pixel, GTM, TikTok)</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Masukkan ID dan event dipisah koma. Akan disimpan rapi ke JSON settings.
+          </p>
+
+          @php
+            $tracking = $settings['tracking'] ?? [];
+            $fbIdsText   = old('tracking.facebook_pixel_ids_text', implode(', ', $tracking['facebook_pixel_ids'] ?? []));
+            $fbEventsTxt = old('tracking.facebook_events_text', implode(', ', $tracking['facebook_events'] ?? []));
+            $gtmIdsText  = old('tracking.gtm_ids_text', implode(', ', $tracking['gtm_ids'] ?? []));
+            $ttIdsText   = old('tracking.tiktok_pixel_ids_text', implode(', ', $tracking['tiktok_pixel_ids'] ?? []));
+          @endphp
+
+          <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="label">Facebook Pixel IDs</label>
+              <input type="text" name="tracking[facebook_pixel_ids_text]" value="{{ $fbIdsText }}" class="input mt-2" placeholder="ID1, ID2, ...">
+              <p class="help mt-1">Contoh: 1234567890, 9876543210</p>
+            </div>
+
+            <div>
+              <label class="label">Facebook Events</label>
+              <input type="text" name="tracking[facebook_events_text]" value="{{ $fbEventsTxt }}" class="input mt-2" placeholder="Lead, Purchase, CompleteRegistration">
+              <p class="help mt-1">Pisahkan dengan koma.</p>
+            </div>
+
+            <div>
+              <label class="label">GTM IDs</label>
+              <input type="text" name="tracking[gtm_ids_text]" value="{{ $gtmIdsText }}" class="input mt-2" placeholder="GTM-XXXXXX, GTM-YYYYYY">
+            </div>
+
+            <div>
+              <label class="label">TikTok Pixel IDs</label>
+              <input type="text" name="tracking[tiktok_pixel_ids_text]" value="{{ $ttIdsText }}" class="input mt-2" placeholder="ID1, ID2, ...">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <a href="{{ route('app.forms.index') }}" class="btn-outline">Batal</a>
+        <button type="submit" class="btn-primary">Simpan Pengaturan</button>
+      </div>
+    </form>
+  </div>
+@endsection
