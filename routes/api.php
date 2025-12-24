@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\EmbedSubmitController;
 use App\Http\Controllers\Api\AbandonedSessionController;
 use App\Http\Controllers\Api\EmbedNonceController;
+use App\Http\Controllers\Api\AddressSuggestController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -30,3 +31,5 @@ Route::post('/submit/{token}', [EmbedSubmitController::class, 'submit'])
     ->middleware('throttle:embed-submit');
 
 Route::post('/abandoned/{token}/touch', [AbandonedSessionController::class, 'touch']);
+Route::get('/address-suggest', [AddressSuggestController::class, 'search'])
+    ->middleware('throttle:60,1');

@@ -71,6 +71,7 @@ class FormEmbedController extends Controller
         $submitUrl    = url('/api/submit/' . $form->embed_token);
         $abandonedUrl = url('/api/abandoned/' . $form->embed_token . '/touch');
         $nonceUrl     = url('/api/embed/' . $form->embed_token . '/nonce');
+        $addressSuggestUrl = url('/api/address-suggest');
 
         $formId       = 'formx_' . $form->id;
 
@@ -88,7 +89,8 @@ class FormEmbedController extends Controller
     var nonceUrl     = "{$nonceUrl}";
 
     var abandonedUrl = "{$abandonedUrl}";
-    
+    var addressSuggestUrl = "{$addressSuggestUrl}";
+
 
     var title      = "{$titleJs}";
     var fields     = {$fieldsJson};
@@ -265,7 +267,7 @@ function touchAbandoned(form){
 
     function buildInnerFormHtml(){
     // ============ CARD WRAPPER (border form) ============
-    var cardOpen = '<div style="background:'+getBackgroundColor()+';border:1px solid #e5e7eb;border-radius:16px;padding:18px;box-shadow:0 8px 26px rgba(0,0,0,0.05);font-family:sans-serif;">';
+    var cardOpen = '<div style="position:relative;overflow:visible;background:'+getBackgroundColor()+';border:1px solid #e5e7eb;border-radius:16px;padding:18px;box-shadow:0 8px 26px rgba(0,0,0,0.05);font-family:sans-serif;">';
     var cardClose = '</div>';
 
     // ============ BODY (isi form tanpa card) ============
@@ -309,21 +311,37 @@ body += '<input type="hidden" name="_ts" value="'+Date.now()+'">';
                 + f.label + (f.required ? ' <span style="color:red">*</span>' : '')
                 + '</label>';
 
-            if (f.type === 'textarea') {
-                body += '<textarea name="'+f.name+'" '+(f.required?'required':'')+' style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-bottom:12px;min-height:70px;"></textarea>';
-            }
-            else if (f.type === 'select') {
-                body += '<select name="'+f.name+'" '+(f.required?'required':'')+' style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-bottom:12px;">';
-                body += '<option value="">Pilih...</option>';
-                (f.options || []).forEach(function(o){
-                    body += '<option value="'+String(o).replace(/"/g,'&quot;')+'">'+o+'</option>';
-                });
-                body += '</select>';
-            }
-            else {
-                var inputType = (f.type==='number'||f.type==='email'||f.type==='tel') ? f.type : 'text';
-                body += '<input type="'+inputType+'" name="'+f.name+'" '+(f.required?'required':'')+' style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-bottom:12px;">';
-            }
+           if (f.type === 'textarea') {
+    body += '<textarea name="'+f.name+'" '+(f.required?'required':'')+' style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-bottom:12px;min-height:70px;"></textarea>';
+}
+else if (f.type === 'select') {
+    body += '<select name="'+f.name+'" '+(f.required?'required':'')+' style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-bottom:12px;">';
+    body += '<option value="">Pilih...</option>';
+    (f.options || []).forEach(function(o){
+        body += '<option value="'+String(o).replace(/"/g,'&quot;')+'">'+o+'</option>';
+    });
+    body += '</select>';
+}
+else if (f.type === 'address_suggest') {
+    var wrapId = formId + '_as_wrap_' + f.name;
+    var listId = formId + '_as_list_' + f.name;
+
+    body += '<div id="'+wrapId+'" style="position:relative;margin-bottom:12px;overflow:visible;">';
+
+body += '<input type="text" autocomplete="off" name="'+f.name+'" '+(f.required?'required':'')+' ' +
+        'style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;" ' +
+        'placeholder="Ketik minimal 3 huruf...">';
+body += '<input type="hidden" name="'+f.name+'_postal">';
+body += '<div id="'+listId+'" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:999999;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,.12);max-height:260px;overflow:auto;-webkit-overflow-scrolling:touch;"></div>';
+
+body += '</div>';
+
+}
+else {
+    var inputType = (f.type==='number'||f.type==='email'||f.type==='tel') ? f.type : 'text';
+    body += '<input type="'+inputType+'" name="'+f.name+'" '+(f.required?'required':'')+' style="width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-bottom:12px;">';
+}
+
         });
 
         // Ringkasan pemesanan
@@ -484,6 +502,105 @@ if (template === 'left_sidebar') {
         totalEl.textContent = formatRupiah(total);
         return { total: total, summary: summary };
     }
+function attachAddressSuggest(form){
+    if (!form) return;
+
+    // cari semua field bertipe address_suggest
+    fields.forEach(function(f){
+        if (f.type !== 'address_suggest') return;
+
+        var input = form.querySelector('input[name="'+f.name+'"]');
+        if (!input) return;
+
+        var listId = formId + '_as_list_' + f.name;
+        var listEl = document.getElementById(listId);
+        if (!listEl) return;
+
+        var lastQ = '';
+        var hideTimer = null;
+
+        function hideList(){
+            listEl.style.display = 'none';
+            listEl.innerHTML = '';
+        }
+
+        function renderItems(items){
+            if (!items || !items.length) {
+                hideList();
+                return;
+            }
+            listEl.innerHTML = items.map(function(it){
+    var safe = String(it.label || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var postalAttr = String(it.postal || '').replace(/"/g,'&quot;');
+
+    return '<div data-value="'+safe.replace(/"/g,'&quot;')+'" ' +
+           'data-postal="'+postalAttr+'" ' +
+           'style="padding:10px 12px;cursor:pointer;font-size:13px;line-height:1.35;color:#0f172a;background:#ffffff;border-bottom:1px solid #f1f5f9;" ' +
+           'onmouseover="this.style.background=\'#f8fafc\'" ' +
+           'onmouseout="this.style.background=\'#ffffff\'">' +
+           safe +
+           '</div>';
+}).join('') +
+'<div style="padding:8px 12px;font-size:11px;color:#64748b;background:#ffffff;position:sticky;bottom:0;border-top:1px solid #f1f5f9;">Klik untuk pilih</div>';
+
+            listEl.style.display = 'block';
+        }
+
+        var doSearch = debounce(function(){
+            var q = (input.value || '').trim();
+            if (q.length < 3) { hideList(); return; }
+            if (q === lastQ) return;
+            lastQ = q;
+
+            fetch(addressSuggestUrl + '?q=' + encodeURIComponent(q) + '&limit=8', {
+                method: 'GET'
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(j){
+                renderItems((j && j.items) ? j.items : []);
+            })
+            .catch(function(){
+                hideList();
+            });
+        }, 250);
+
+        input.addEventListener('input', function(){
+            doSearch();
+        });
+
+        // click select
+        listEl.addEventListener('mousedown', function(e){
+            // mousedown (bukan click) biar gak keburu blur
+            var target = e.target;
+            if (!target) return;
+           var val = target.getAttribute('data-value');
+if (!val) return;
+
+input.value = val;
+
+// TAMBAH INI
+var postal = target.getAttribute('data-postal') || '';
+var postalEl = form.querySelector('input[name="'+f.name+'_postal"]');
+if (postalEl) postalEl.value = postal;
+
+hideList();
+
+
+            // trigger summary refresh
+            try { input.dispatchEvent(new Event('input', {bubbles:true})); } catch(e){}
+        });
+
+        // blur hide (delay dikit supaya mousedown kepick)
+        input.addEventListener('blur', function(){
+            hideTimer = setTimeout(hideList, 150);
+        });
+        input.addEventListener('focus', function(){
+            if (hideTimer) clearTimeout(hideTimer);
+            // optional: kalau value >=3, munculin lagi
+            if ((input.value||'').trim().length >= 3) doSearch();
+        });
+    });
+}
 
     function attachBehaviors(){
         var form = document.getElementById(formId);
@@ -492,7 +609,7 @@ if (template === 'left_sidebar') {
 var isSubmitting = false;
 
         if (!form) return;
-
+attachAddressSuggest(form);
         // initial
         buildSummaryAndTotal(form);
 

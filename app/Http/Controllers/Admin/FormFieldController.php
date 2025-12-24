@@ -18,17 +18,18 @@ class FormFieldController extends Controller
         $fields = $form->fields()->orderBy('order')->get();
 
         // list asli (biar kompatibel sama view lama kalau ada yang masih pakai)
-        $fieldTypes = ['text', 'textarea', 'number', 'tel', 'email', 'select'];
+        $fieldTypes = ['text', 'textarea', 'number', 'tel', 'email', 'select', 'address_suggest'];
 
-        // label manusia (buat UI awam)
         $fieldTypeLabels = [
-            'text'     => 'Teks (1 baris)',
-            'textarea' => 'Teks Panjang (alamat/catatan)',
-            'number'   => 'Angka',
-            'tel'      => 'No. HP / WhatsApp',
-            'email'    => 'Email',
-            'select'   => 'Pilihan (Dropdown)',
+            'text'           => 'Teks (1 baris)',
+            'textarea'       => 'Teks Panjang (alamat/catatan)',
+            'number'         => 'Angka',
+            'tel'            => 'No. HP / WhatsApp',
+            'email'          => 'Email',
+            'select'         => 'Pilihan (Dropdown)',
+            'address_suggest' => 'Alamat (Auto Suggest, min 3 huruf)',
         ];
+
 
         return view('admin.forms.fields', compact('form', 'fields', 'fieldTypes', 'fieldTypeLabels'));
     }
@@ -41,7 +42,8 @@ class FormFieldController extends Controller
         $data = $request->validate([
             'label'     => ['required', 'string', 'max:255'],
             'name'      => ['required', 'string', 'max:255'],
-            'type'      => ['required', 'string', 'in:text,textarea,number,tel,email,select'],
+            'type' => ['required', 'string', 'in:text,textarea,number,tel,email,select,address_suggest'],
+
             'required'  => ['nullable', 'boolean'],
             'options'   => ['nullable', 'string'], // comma separated, untuk select
             'show_in_summary' => ['nullable', 'boolean'],
