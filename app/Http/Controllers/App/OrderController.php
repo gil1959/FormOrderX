@@ -5,6 +5,8 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\Submission;
 use Illuminate\Http\Request;
+use App\Models\FollowUpLog;
+use Illuminate\Support\Carbon;
 
 class OrderController extends Controller
 {
@@ -79,4 +81,62 @@ class OrderController extends Controller
 
         return back()->with('success', 'Status berhasil diubah.');
     }
+    public function storeFollowUp(Request $request, Submission $submission)
+{
+    abort_unless($submission->user_id === $request->user()->id, 403);
+
+    $data = $request->validate([
+        'key' => ['required', 'string', 'max:32'],
+        'channel' => ['nullable', 'string', 'max:16'], // whatsapp|sms|call
+        'phone' => ['nullable', 'string', 'max:32'],
+        'message' => ['nullable', 'string'],
+        'sent_at' => ['nullable', 'date'],
+    ]);
+
+    $key = $data['key'];
+    $channel = $data['channel'] ?? 'whatsapp';
+    $sentAt = isset($data['sent_at']) ? Carbon::parse($data['sent_at']) : now();
+
+    // 1) LOG (audit)
+    FollowUpLog::create([
+        'user_id' => $request->user()->id,
+        'subject_type' => 'submission',
+        'subject_id' => $submission->id,
+        'channel' => $channel,
+        'key' => $key,
+        'phone' => $data['phone'] ?? null,
+        'message' => $data['message'] ?? null,
+        'sent_at' => $sentAt,
+    ]);
+
+    // 2) SAVE status step W / 1-4 (yang lu minta)
+    switch ($key) {
+        case 'welcome':
+            $submission->welcome_sent_at = $sentAt;
+            break;
+        case 'fu1':
+            $submission->followup1_sent_at = $sentAt;
+            break;
+        case 'fu2':
+            $submission->followup2_sent_at = $sentAt;
+            break;
+        case 'fu3':
+            $submission->followup3_sent_at = $sentAt;
+            break;
+        case 'fu4':
+            $submission->followup4_sent_at = $sentAt;
+            break;
+        default:
+            // key lain (wa_processing, sms, call, dll)
+            // cuma masuk log + last_followup
+            break;
+    }
+
+    $submission->last_followup_key = $key;
+    $submission->last_followup_at = $sentAt;
+    $submission->save();
+
+    return response()->json(['ok' => true]);
+}
+
 }

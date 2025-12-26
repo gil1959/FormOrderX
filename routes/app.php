@@ -37,6 +37,11 @@ Route::middleware(['auth', 'verified'])
         Route::patch('/orders/{submission}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
         Route::delete('/orders/{submission}', [OrderController::class, 'destroy'])->name('orders.destroy');
         Route::delete('/abandoned-carts/{session}', [AbandonedCartController::class, 'destroy'])->name('abandoned.destroy');
+Route::post('/orders/{submission}/follow-up', [OrderController::class, 'storeFollowUp'])
+    ->name('orders.followup');
+
+Route::post('/abandoned-carts/{session}/follow-up', [AbandonedCartController::class, 'storeFollowUp'])
+    ->name('abandoned.followup');
 
         Route::get('/abandoned-carts', [AbandonedCartController::class, 'index'])->name('abandoned.index');
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
