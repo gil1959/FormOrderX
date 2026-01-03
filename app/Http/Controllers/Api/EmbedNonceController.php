@@ -5,25 +5,32 @@ namespace App\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 class EmbedNonceController
 {
     /**
      * Issue nonce single-use untuk submit embed.
      * Dipanggil oleh JS embed (tanpa ganggu UI).
      */
-    public function issue(Request $request, string $token)
-    {
-        // Nonce random, single-use, TTL pendek
-        $nonce = Str::random(48);
+   public function issue(Request $request, string $token)
+{
+    $nonce = Str::random(48);
 
-        // Simpan marker valid untuk token + nonce (di-cache, bukan DB)
-        Cache::put($this->cacheKey($token, $nonce), 1, now()->addMinutes(10));
+    DB::table('embed_nonces')->insert([
+        'token'       => $token,
+        'nonce_hash'  => hash('sha256', $nonce),
+        'expires_at'  => now()->addMinutes(10),
+        'consumed_at' => null,
+        'created_at'  => now(),
+        'updated_at'  => now(),
+    ]);
 
-        return response()->json([
-            'nonce' => $nonce,
-        ], 200);
-    }
+    return response()->json([
+        'nonce' => $nonce,
+    ], 200);
+}
+
 
     private function cacheKey(string $token, string $nonce): string
     {

@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
 
 
 
@@ -48,17 +50,31 @@ class EmbedSubmitController extends Controller
         // 2) Honeypot + timing: nyaring bot sederhana/replay
         // ==============================
 
-        $nonce = (string) data_get($payload, 'meta.nonce', '');
-        $nonceKey = 'embed_nonce:' . $token . ':' . hash('sha256', $nonce);
+       $nonce = (string) data_get($payload, 'meta.nonce', '');
+$nonceHash = hash('sha256', $nonce);
 
-        if (!Cache::has($nonceKey)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Permintaan tidak valid. Silakan refresh halaman dan coba lagi.',
-            ], 429);
-        }
-        // consume nonce (single-use)
-        Cache::forget($nonceKey);
+$nonceRow = DB::table('embed_nonces')
+    ->where('token', $token)
+    ->where('nonce_hash', $nonceHash)
+    ->whereNull('consumed_at')
+    ->where('expires_at', '>', now())
+    ->first();
+
+if (!$nonceRow) {
+    return response()->json([
+        'success' => false,
+        'message' => 'Permintaan tidak valid. Silakan refresh halaman dan coba lagi.',
+    ], 429);
+}
+
+// consume nonce (single-use)
+DB::table('embed_nonces')
+    ->where('id', $nonceRow->id)
+    ->update([
+        'consumed_at' => now(),
+        'updated_at'  => now(),
+    ]);
+
 
         // Honeypot
         $hp = (string) data_get($payload, 'meta.hp', '');

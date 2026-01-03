@@ -7,28 +7,66 @@ use App\Models\Submission;
 use Illuminate\Http\Request;
 use App\Models\FollowUpLog;
 use Illuminate\Support\Carbon;
+use App\Models\Form;
+use App\Models\AppSetting;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
-    {
-        $q = Submission::query()
-            ->with('form')
-            ->where('user_id', $request->user()->id)
-            ->orderByDesc('submitted_at');
+{
+    $q = Submission::query()
+        ->with('form')
+        ->where('user_id', $request->user()->id)
+        ->orderByDesc('submitted_at');
 
-        if ($request->filled('status')) {
-            $q->where('status', $request->string('status'));
-        }
-
-        if ($request->filled('payment_status')) {
-            $q->where('payment_status', $request->string('payment_status'));
-        }
-
-        $orders = $q->paginate(20)->withQueryString();
-
-        return view('app.orders.index', compact('orders'));
+    // ==== filter status yang sudah ada ====
+    if ($request->filled('status')) {
+        $q->where('status', $request->string('status'));
     }
+
+    if ($request->filled('payment_status')) {
+        $q->where('payment_status', $request->string('payment_status'));
+    }
+
+    // ==== FILTER BARU: produk (form_id) ====
+    if ($request->filled('form_id')) {
+        $q->where('form_id', (int) $request->input('form_id'));
+    }
+
+    // ==== FILTER BARU: tanggal (submitted_at) ====
+    // pakai startOfDay/endOfDay biar inclusive.
+    if ($request->filled('date_from')) {
+        $from = Carbon::parse($request->input('date_from'))->startOfDay();
+        $q->where('submitted_at', '>=', $from);
+    }
+
+    if ($request->filled('date_to')) {
+        $to = Carbon::parse($request->input('date_to'))->endOfDay();
+        $q->where('submitted_at', '<=', $to);
+    }
+
+    $orders = $q->paginate(20)->withQueryString();
+
+    // list produk untuk dropdown
+    $forms = Form::query()
+        ->where('user_id', $request->user()->id)
+        ->orderBy('name')
+        ->get(['id', 'name']);
+$userId = $request->user()->id;
+
+$tplSetting = AppSetting::where('user_id', $userId)
+    ->where('key', 'message_templates')
+    ->first();
+
+$messageTemplates = $tplSetting?->value ?? [];
+if (!is_array($messageTemplates)) $messageTemplates = [];
+
+$orderTemplates = $messageTemplates['orders'] ?? [];
+if (!is_array($orderTemplates)) $orderTemplates = [];
+
+    return view('app.orders.index', compact('orders', 'forms', 'orderTemplates'));
+}
+
     public function destroy(Request $request, Submission $submission)
     {
         abort_unless($submission->user_id === $request->user()->id, 403);

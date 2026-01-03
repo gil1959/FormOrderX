@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\FormFieldController;
 use App\Http\Controllers\App\OrderController;
 use App\Http\Controllers\App\AbandonedCartController;
 use App\Http\Controllers\App\SettingsController;
-
+use App\Http\Controllers\App\MessageTemplateController;
 
 
 Route::middleware(['auth', 'verified'])
@@ -42,6 +42,8 @@ Route::post('/orders/{submission}/follow-up', [OrderController::class, 'storeFol
 
 Route::post('/abandoned-carts/{session}/follow-up', [AbandonedCartController::class, 'storeFollowUp'])
     ->name('abandoned.followup');
+Route::post('/message-templates/save', [MessageTemplateController::class, 'save'])
+    ->name('message_templates.save');
 
         Route::get('/abandoned-carts', [AbandonedCartController::class, 'index'])->name('abandoned.index');
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

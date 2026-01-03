@@ -20,31 +20,58 @@
   <div class="space-y-4">
     {{-- Filter --}}
     <div class="card p-4">
-      <form method="GET" class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
-        <div class="lg:col-span-2">
-          <label class="label">Status Order</label>
-          <select name="status" class="input">
-            <option value="">Semua</option>
-            @foreach (['pending' => 'Pending', 'processed' => 'Process', 'completed' => 'Complete', 'cancelled' => 'Cancel'] as $k => $v)
-              <option value="{{ $k }}" @selected(request('status')===$k)>{{ $v }}</option>
-            @endforeach
-          </select>
-        </div>
+      <form method="GET" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-8 lg:items-end">
+  <div class="lg:col-span-2">
+    <label class="label">Produk</label>
+    <select name="form_id" class="input">
+      <option value="">Semua</option>
+      @foreach ($forms as $f)
+        <option value="{{ $f->id }}" @selected((string)request('form_id')===(string)$f->id)>
+          {{ $f->name }}
+        </option>
+      @endforeach
+    </select>
+  </div>
 
-        <div class="lg:col-span-2">
-          <label class="label">Status Pembayaran</label>
-          <select name="payment_status" class="input">
-            <option value="">Semua</option>
-            @foreach (['unpaid' => 'Unpaid', 'paid' => 'Paid', 'refunded' => 'Refund'] as $k => $v)
-              <option value="{{ $k }}" @selected(request('payment_status')===$k)>{{ $v }}</option>
-            @endforeach
-          </select>
-        </div>
+  <div class="lg:col-span-2">
+    <label class="label">Status Order</label>
+    <select name="status" class="input">
+      <option value="">Semua</option>
+      @foreach (['pending' => 'Pending', 'processed' => 'Processed', 'completed' => 'Complete', 'cancelled' => 'Cancel'] as $k => $v)
+        <option value="{{ $k }}" @selected(request('status')===$k)>{{ $v }}</option>
+      @endforeach
+    </select>
+  </div>
 
-        <div class="lg:col-span-2">
-          <button class="btn-primary w-full">Terapkan Filter</button>
-        </div>
-      </form>
+  <div class="lg:col-span-2">
+    <label class="label">Status Pembayaran</label>
+    <select name="payment_status" class="input">
+      <option value="">Semua</option>
+      @foreach (['unpaid' => 'Unpaid', 'paid' => 'Paid', 'refunded' => 'Refund'] as $k => $v)
+        <option value="{{ $k }}" @selected(request('payment_status')===$k)>{{ $v }}</option>
+      @endforeach
+    </select>
+  </div>
+
+  <div>
+    <label class="label">Dari Tanggal</label>
+    <input type="date" name="date_from" class="input" value="{{ request('date_from') }}">
+  </div>
+
+  <div>
+    <label class="label">Sampai</label>
+    <input type="date" name="date_to" class="input" value="{{ request('date_to') }}">
+  </div>
+
+  <div class="lg:col-span-1">
+    <button class="btn-primary w-full">Terapkan</button>
+  </div>
+
+  <div class="lg:col-span-1">
+    <a href="{{ route('app.orders.index') }}" class="btn-outline w-full text-center block">Reset</a>
+  </div>
+</form>
+
     </div>
 
     {{-- Table --}}
@@ -74,6 +101,25 @@
           </thead>
 
           <tbody class="divide-y divide-slate-200/70">
+            @php
+  $defaultOrderTemplates = [
+    'welcome'=>"Terima kasih kak {name}, pesanan kami terima.\n\n{summary}\n\nTotal: {total}",
+    'fu1'=>"Halo kak {name}, kami follow up pesanan kakak yang belum dibayar ya 😊",
+    'fu2'=>"Halo kak {name}, kami belum menerima pembayaran. Jika sudah transfer mohon kirim bukti 🙏",
+    'fu3'=>"Halo kak {name}, stok terbatas ya kak. Kalau masih lanjut bisa segera dibayar 😊",
+    'fu4'=>"Halo kak {name}, ini follow up terakhir. Jika masih ingin lanjut silakan lakukan pembayaran 🙏",
+
+    'upsell'=>"Halo kak {name}, kami ada rekomendasi produk tambahan yang cocok untuk pesanan kakak 😊",
+    'order_detail'=>"Halo kak {name}, berikut detail pesanan kakak:\n\n{summary}\n\nTotal: {total}",
+    'processing'=>"Halo kak {name}, pesanan sedang kami proses ya 🙏",
+    'completed'=>"Halo kak {name}, pesanan sudah selesai. Terima kasih 🙏",
+    'sms'=>"SMS ke {name} ({phone})",
+    'call'=>"Telepon ke {name} ({phone})",
+  ];
+
+  $mergedOrderTemplates = array_merge($defaultOrderTemplates, $orderTemplates ?? []);
+@endphp
+
             @forelse($orders as $o)
               @php
                 $payload = $o->data ?? [];
@@ -106,20 +152,8 @@
                   'summary'=>(string)($summaryText ?: '-'),
                   'total'=>(string)$totalText,
                   'followup_store_url'=>route('app.orders.followup',$o),
-                  'templates'=>[
-                    'welcome'=>"Terima kasih kak {name}, pesanan kami terima.\n\n{summary}\n\nTotal: {total}",
-                    'fu1'=>"Halo kak {name}, kami follow up pesanan kakak yang belum dibayar ya 😊",
-                    'fu2'=>"Halo kak {name}, kami belum menerima pembayaran. Jika sudah transfer mohon kirim bukti 🙏",
-                    'fu3'=>"Halo kak {name}, stok terbatas ya kak. Kalau masih lanjut bisa segera dibayar 😊",
-                    'fu4'=>"Halo kak {name}, ini follow up terakhir. Jika masih ingin lanjut silakan lakukan pembayaran 🙏",
+                  'templates'=> $mergedOrderTemplates,
 
-                    'upsell'=>"Halo kak {name}, kami ada rekomendasi produk tambahan yang cocok untuk pesanan kakak 😊",
-                    'order_detail'=>"Halo kak {name}, berikut detail pesanan kakak:\n\n{summary}\n\nTotal: {total}",
-                    'processing'=>"Halo kak {name}, pesanan sedang kami proses ya 🙏",
-                    'completed'=>"Halo kak {name}, pesanan sudah selesai. Terima kasih 🙏",
-                    'sms'=>"SMS ke {name} ({phone})",
-                    'call'=>"Telepon ke {name} ({phone})",
-                  ],
                   'state'=>[
                     'welcome'=>!empty($o->welcome_sent_at),
                     'fu1'=>!empty($o->followup1_sent_at),
@@ -130,13 +164,15 @@
                 ];
 
                 // warna mirip screenshot: W hijau, 1 kuning, 2-4 abu; kalau belum sent = abu muda
-                $fuColors = [
-                  'welcome' => $rowData['state']['welcome'] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600',
-                  'fu1' => $rowData['state']['fu1'] ? 'bg-amber-400 text-white' : 'bg-slate-200 text-slate-600',
-                  'fu2' => $rowData['state']['fu2'] ? 'bg-slate-400 text-white' : 'bg-slate-200 text-slate-600',
-                  'fu3' => $rowData['state']['fu3'] ? 'bg-slate-400 text-white' : 'bg-slate-200 text-slate-600',
-                  'fu4' => $rowData['state']['fu4'] ? 'bg-slate-400 text-white' : 'bg-slate-200 text-slate-600',
-                ];
+                // konsisten: kalau sudah sent = HIJAU, kalau belum = abu
+$fuColors = [
+  'welcome' => $rowData['state']['welcome'] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600',
+  'fu1'     => $rowData['state']['fu1'] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600',
+  'fu2'     => $rowData['state']['fu2'] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600',
+  'fu3'     => $rowData['state']['fu3'] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600',
+  'fu4'     => $rowData['state']['fu4'] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600',
+];
+
 
                 $chatSvg = '<svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
                   <path d="M20 2H4a2 2 0 0 0-2 2v14l4-3h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/>
@@ -347,55 +383,128 @@
   </div>
 
   {{-- MODAL --}}
-  <div id="fuModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl w-full max-w-lg p-4 space-y-3">
+<div id="fuModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl w-full max-w-lg p-4 space-y-3">
+
+    {{-- Header + tombol X --}}
+    <div class="flex items-start justify-between gap-3">
       <div class="font-semibold" id="fuTitle"></div>
-      <input id="fuPhone" class="input" placeholder="628xxx">
-      <textarea id="fuText" class="input min-h-[120px]"></textarea>
-      <div class="flex justify-end gap-2">
-        <button onclick="closeFU()" class="btn-outline">Batal</button>
-        <button onclick="sendFU()" class="btn-primary">Follow Up</button>
-      </div>
+
+      <button type="button"
+        onclick="closeFU()"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+        aria-label="Tutup">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <input id="fuPhone" class="input" placeholder="628xxx">
+    <textarea id="fuText" class="input min-h-[120px]"></textarea>
+
+    <div class="flex justify-end gap-2">
+      <button type="button" onclick="closeFU()" class="btn-outline">Batal</button>
+      <button type="button" onclick="saveFU()" class="btn-outline">Save Template</button>
+      <button type="button" onclick="sendFU()" class="btn-primary">Follow Up</button>
     </div>
   </div>
+</div>
+
+
 
   <script>
+  // ===== GLOBAL TEMPLATE CACHE (persist walau modal ditutup) =====
+  const UG_TPL_KEY = 'ug_tpl_cache_v1';
+  const UG_TPL = (() => {
+    try { return JSON.parse(localStorage.getItem(UG_TPL_KEY) || '{}'); }
+    catch(e){ return {}; }
+  })();
+
+  function ugKey(ctx, key){ return `${ctx}::${key}`; }
+  function ugGet(ctx, key, fallback){
+    const k = ugKey(ctx, key);
+    return (UG_TPL[k] !== undefined) ? UG_TPL[k] : fallback;
+  }
+  function ugSet(ctx, key, val){
+    const k = ugKey(ctx, key);
+    UG_TPL[k] = String(val ?? '');
+    localStorage.setItem(UG_TPL_KEY, JSON.stringify(UG_TPL));
+  }
+
   let FU_CTX=null
 
+
   function openFU(ctx,key){
-    FU_CTX={ctx,key}
-    document.getElementById('fuTitle').innerText=`Follow Up ${key.toUpperCase()}`
-    document.getElementById('fuPhone').value=ctx.phone
-    document.getElementById('fuText').value=
-      (ctx.templates[key]||'')
-        .replaceAll('{name}',ctx.name)
-        .replaceAll('{summary}',ctx.summary)
-        .replaceAll('{total}',ctx.total)
-        .replaceAll('{phone}',ctx.phone)
-    document.getElementById('fuModal').classList.remove('hidden')
-  }
+  FU_CTX={ctx,key}
+  document.getElementById('fuTitle').innerText=`Follow Up ${key.toUpperCase()}`
+  document.getElementById('fuPhone').value=ctx.phone || ''
+
+  const fallback = ((ctx.templates || {})[key] || '');
+  document.getElementById('fuText').value = ugGet('orders', key, fallback);
+
+  document.getElementById('fuModal').classList.remove('hidden')
+}
 
   function closeFU(){
-    document.getElementById('fuModal').classList.add('hidden')
+  document.getElementById('fuModal').classList.add('hidden')
+  FU_CTX = null
+}
+
+async function saveFU(){
+  const {ctx,key} = FU_CTX || {}
+  if(!ctx || !key) return
+
+  const template = document.getElementById('fuText').value || ''
+
+  const res = await fetch('{{ route('app.message_templates.save') }}', {
+    method: 'POST',
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      context: 'orders',
+      key: key,
+      template: template,
+    })
+  })
+
+  if(!res.ok){
+    const t = await res.text()
+    alert('Gagal save template: ' + t)
+    return
   }
+  ugSet('orders', key, template);
+  // ✅ PENTING: update cache template di browser (tanpa reload pun kebaca)
+  ctx.templates = ctx.templates || {}
+  ctx.templates[key] = template
+
+  alert('Template tersimpan')
+}
+
 
   async function sendFU(){
     const {ctx,key}=FU_CTX
     const phone=document.getElementById('fuPhone').value
-    const text=document.getElementById('fuText').value
+   const tpl = document.getElementById('fuText').value || ''
+const text = renderOrderTpl(tpl, ctx)
 
-    await fetch(ctx.followup_store_url,{
-      method:'POST',
-      headers:{
-        'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content,
-        'Content-Type':'application/json'
-      },
-      body:JSON.stringify({key,phone,message:text})
-    })
+await fetch(ctx.followup_store_url,{
+  method:'POST',
+  headers:{
+    'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content,
+    'Content-Type':'application/json',
+    'Accept':'application/json'
+  },
+  body:JSON.stringify({key,phone,message:text})
+})
 
-    if(!['sms','call'].includes(key)){
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`)
-    }
+if(!['sms','call'].includes(key)){
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`)
+}
+
 
     location.reload()
   }
@@ -409,6 +518,14 @@
     if(isHidden) el.classList.remove('hidden')
     else el.classList.add('hidden')
   }
+  function renderOrderTpl(tpl, ctx){
+  return String(tpl || '')
+    .replaceAll('{name}', ctx.name || '-')
+    .replaceAll('{summary}', ctx.summary || '-')
+    .replaceAll('{total}', ctx.total || '-')
+    .replaceAll('{phone}', ctx.phone || '-')
+}
+
   function hideMoreMenu(id){
     const el = document.getElementById(id)
     if(el) el.classList.add('hidden')
