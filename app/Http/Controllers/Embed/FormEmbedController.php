@@ -18,6 +18,17 @@ class FormEmbedController extends Controller
             ->firstOrFail();
 
         $settings = $form->settings ?? [];
+        $tracking = $settings['tracking'] ?? [];
+
+$fbPixelIds = array_values(array_filter($tracking['facebook_pixel_ids'] ?? []));
+$fbEvents   = array_values(array_filter($tracking['facebook_events'] ?? []));
+$gtmIds     = array_values(array_filter($tracking['gtm_ids'] ?? []));
+$ttPixelIds = array_values(array_filter($tracking['tiktok_pixel_ids'] ?? []));
+
+$fbPixelIdsJson = json_encode($fbPixelIds);
+$fbEventsJson   = json_encode($fbEvents);
+$gtmIdsJson     = json_encode($gtmIds);
+$ttPixelIdsJson = json_encode($ttPixelIds);
 
         // Layout
         $layout       = $settings['layout'] ?? [];
@@ -96,6 +107,10 @@ class FormEmbedController extends Controller
     var fields     = {$fieldsJson};
 
     var basePrice  = {$basePriceJson};
+var fbPixelIds = {$fbPixelIdsJson};
+var fbEvents   = {$fbEventsJson};
+var gtmIds     = {$gtmIdsJson};
+var ttPixelIds = {$ttPixelIdsJson};
 
     var showImage  = {$this->boolToJs($showImage)};
     var imageUrl   = {$this->nullableStringToJs($imageUrl)};
@@ -140,6 +155,60 @@ function fetchNonce(force){
         });
 
     return _nonceFetching;
+}
+function firePurchaseTracking(calc){
+    try {
+        var value = Number(calc && calc.total ? calc.total : 0) || 0;
+        var currency = 'IDR';
+
+        // ---- Facebook Pixel (Meta) ----
+        if (fbPixelIds && fbPixelIds.length) {
+            // kalau fbq belum ada, jangan maksa load (biar gak konflik LP user).
+            // Asumsi: LP user pasang pixel. Kalau mau auto-load, bisa ditambah belakangan.
+            if (typeof window.fbq === 'function') {
+                // init semua pixel yang diset (kalau belum)
+                fbPixelIds.forEach(function(pid){
+                    try { window.fbq('init', String(pid)); } catch(e){}
+                });
+
+                // wajib: Purchase
+                try {
+                    window.fbq('track', 'Purchase', {value: value, currency: currency});
+                } catch(e){}
+
+                // event tambahan dari setting (kalau ada)
+                if (fbEvents && fbEvents.length) {
+                    var sent = {'Purchase': true};
+                    fbEvents.forEach(function(ev){
+                        ev = String(ev || '').trim();
+                        if (!ev || sent[ev]) return;
+                        sent[ev] = true;
+                        try { window.fbq('track', ev, {value: value, currency: currency}); } catch(e){}
+                    });
+                }
+            }
+        }
+
+        // ---- TikTok Pixel ----
+        if (ttPixelIds && ttPixelIds.length) {
+            if (typeof window.ttq === 'object' && typeof window.ttq.track === 'function') {
+                try { window.ttq.track('CompletePayment', {value: value, currency: currency}); } catch(e){}
+            }
+        }
+
+        // ---- GTM / dataLayer ----
+        if (typeof window.dataLayer !== 'undefined' && Array.isArray(window.dataLayer)) {
+            window.dataLayer.push({
+                event: 'formorderx_purchase',
+                value: value,
+                currency: currency,
+                items: (calc && calc.summary) ? calc.summary : []
+            });
+        }
+
+    } catch(e) {
+        // silent biar gak ganggu UX
+    }
 }
 
 
@@ -248,8 +317,13 @@ function debounce(fn, wait){
     };
 }
 
+var __formxConverted = false;
+
 function touchAbandoned(form){
-    // kumpulin data form
+    // jangan touch AC kalau lagi submit / sudah sukses
+    if (__formxConverted) return;
+    if (typeof isSubmitting !== 'undefined' && isSubmitting) return;
+
     var fd = new FormData(form);
     var obj = {};
     fd.forEach(function(v,k){ obj[k]=v; });
@@ -264,6 +338,7 @@ function touchAbandoned(form){
         })
     }).catch(function(){ /* silent */ });
 }
+
 
     function buildInnerFormHtml(){
     // ============ CARD WRAPPER (border form) ============
@@ -700,11 +775,24 @@ fetchNonce(true)
         var j = res.json;
 
         if (res.ok) {
-            // kalau backend kirim redirect_url, redirect
-            if (j.redirect_url) {
-                window.location.href = j.redirect_url;
-                return;
-            }
+    __formxConverted = true; // stop touch AC setelah sukses
+
+    // tembak tracking purchase dulu
+    firePurchaseTracking(calc);
+
+    // optional: reset session key biar sesi berikutnya fresh
+    try {
+        var keyName = 'formx_session_' + formId;
+        localStorage.removeItem(keyName);
+    } catch(e){}
+
+    // kalau backend kirim redirect_url, delay sedikit biar pixel sempet terkirim
+    if (j.redirect_url) {
+        setTimeout(function(){
+            window.location.href = j.redirect_url;
+        }, 800);
+        return;
+    }
 
             if (msg) {
                 msg.style.color = '#16a34a';

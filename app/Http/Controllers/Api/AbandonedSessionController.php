@@ -21,21 +21,49 @@ class AbandonedSessionController extends Controller
             'source_url'  => ['nullable', 'string', 'max:2048'],
         ]);
 
-        AbandonedSession::updateOrCreate(
-            [
-                'form_id'      => $form->id,
-                'user_id'      => $form->user_id,
-                'session_key'  => $payload['session_key'],
-            ],
-            [
-                'data'             => [
-                    'fields'     => $payload['data'] ?? null,
-                    'source_url' => $payload['source_url'] ?? null,
-                ],
-                'converted'        => false,
-                'last_activity_at' => now(),
-            ]
-        );
+        $session = AbandonedSession::firstOrCreate(
+    [
+        'form_id'     => $form->id,
+        'user_id'     => $form->user_id,
+        'session_key' => $payload['session_key'],
+    ],
+    [
+        'data'             => [
+            'fields'     => $payload['data'] ?? null,
+            'source_url' => $payload['source_url'] ?? null,
+        ],
+        'converted'        => false,
+        'last_activity_at' => now(),
+    ]
+);
+
+// Kalau sudah converted (order sukses), JANGAN pernah dibalikin ke false.
+// Boleh update last_activity_at/data kalau mau, tapi keep converted = true.
+if ($session->converted) {
+    $session->update([
+        'last_activity_at' => now(),
+        'data' => [
+            'fields'     => $payload['data'] ?? null,
+            'source_url' => $payload['source_url'] ?? null,
+        ],
+    ]);
+
+    return response()->json(['success' => true]);
+}
+
+// Kalau belum converted, normal update draft AC
+$session->update([
+    'last_activity_at' => now(),
+    'data' => [
+        'fields'     => $payload['data'] ?? null,
+        'source_url' => $payload['source_url'] ?? null,
+    ],
+]);
+
+return response()->json([
+    'success' => true,
+]);
+
 
         return response()->json([
             'success' => true,
